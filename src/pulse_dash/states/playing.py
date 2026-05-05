@@ -7,6 +7,7 @@ import pygame
 from pulse_dash.core.camera import Camera
 from pulse_dash.core.colors import BG_BOTTOM, BG_TOP, CYAN, DARK, GREEN, MAGENTA, MUTED, RED, WHITE, YELLOW
 from pulse_dash.core.config import CONFIG
+from pulse_dash.core.difficulty import DifficultySnapshot, ObstacleSpawner
 from pulse_dash.core.input import InputState
 from pulse_dash.core.particles import ParticleSystem
 from pulse_dash.core.utils import clamp, draw_text, draw_vertical_gradient, rounded_panel
@@ -27,6 +28,8 @@ class PlayingState(BaseState):
         self.coins = 0
         self.paused = False
         self.finished = False
+        self.obstacle_spawner = ObstacleSpawner()
+        self.difficulty: DifficultySnapshot = self.obstacle_spawner.curve.snapshot(0.0)
 
     def handle_input(self, input_state: InputState) -> None:
         if input_state.quit_requested:
@@ -47,6 +50,7 @@ class PlayingState(BaseState):
         if self.player.jumped_this_frame:
             self.particles.emit_burst(self.player.rect.left, self.player.rect.bottom, 8, CYAN)
         self.camera.update(self.player.rect, dt)
+        self.difficulty = self.obstacle_spawner.update(self.time, self.player.rect.centerx, self.level.spikes)
         self.particles.emit_trail(self.player.rect.left, self.player.rect.centery)
         self.particles.update(dt)
 
@@ -131,6 +135,8 @@ class PlayingState(BaseState):
         draw_text(surface, f"{progress}%", self.game.assets.font_small, WHITE, (430, 39), shadow=False)
         draw_text(surface, f"Score {self.score}", self.game.assets.font_small, WHITE, (1000, 34), shadow=False)
         draw_text(surface, f"Coins {self.coins}/{len(self.level.coins)}", self.game.assets.font_small, YELLOW, (1160, 34), shadow=False)
+        intensity = int(self.difficulty.normalized * 100)
+        draw_text(surface, f"Dificultad {intensity}%", self.game.assets.font_small, MUTED, (650, 34), shadow=False)
 
     def _draw_pause(self, surface: pygame.Surface) -> None:
         overlay = pygame.Surface((CONFIG.width, CONFIG.height), pygame.SRCALPHA)
