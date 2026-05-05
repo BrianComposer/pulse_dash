@@ -1,0 +1,16 @@
+from __future__ import annotations
+
+BG_TOP = (12, 10, 32)
+BG_BOTTOM = (4, 4, 16)
+CYAN = (38, 224, 255)
+MAGENTA = (255, 58, 179)
+YELLOW = (255, 232, 89)
+ORANGE = (255, 137, 59)
+GREEN = (93, 255, 149)
+WHITE = (240, 246, 255)
+MUTED = (142, 157, 187)
+DARK = (18, 22, 42)
+DARKER = (8, 10, 22)
+RED = (255, 78, 98)
+PURPLE = (126, 91, 255)
+PLATFORM = (46, 58, 98)
