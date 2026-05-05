@@ -18,6 +18,7 @@ class Player:
     jump_buffer_timer: float = 0.0
     coyote_timer: float = 0.0
     jumped_this_frame: bool = False
+    invulnerability_timer: float = 0.0
 
     @classmethod
     def create(cls, x: int = 120, y: int | None = None) -> "Player":
@@ -53,12 +54,25 @@ class Player:
     def _can_jump(self) -> bool:
         return self.on_ground or self.coyote_timer > 0.0
 
+    def is_invulnerable(self) -> bool:
+        return self.invulnerability_timer > 0.0
+
+    def take_damage(self) -> bool:
+        """Return True only when a hit actually consumes a life."""
+        if self.is_invulnerable() or not self.alive:
+            return False
+        self.invulnerability_timer = CONFIG.damage_invulnerability_time
+        self.velocity.y = CONFIG.damage_bounce_velocity
+        return True
+
     def update(self, dt: float, platforms: list[pygame.Rect]) -> None:
         if not self.alive:
             return
 
         self.jumped_this_frame = False
         dt = min(dt, 1 / 20)
+        if self.invulnerability_timer > 0.0:
+            self.invulnerability_timer = max(0.0, self.invulnerability_timer - dt)
 
         if self.on_ground:
             self.coyote_timer = CONFIG.coyote_time
@@ -103,6 +117,8 @@ class Player:
             self.rotation = round(self.rotation / 90) * 90
 
     def draw(self, surface: pygame.Surface, camera_x: float) -> None:
+        if self.is_invulnerable() and int(self.invulnerability_timer * 18) % 2 == 0:
+            return
         player_surface = pygame.Surface((self.rect.width + 12, self.rect.height + 12), pygame.SRCALPHA)
         body = pygame.Rect(6, 6, self.rect.width, self.rect.height)
         pygame.draw.rect(player_surface, MAGENTA, body, border_radius=8)

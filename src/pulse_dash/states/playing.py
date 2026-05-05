@@ -26,10 +26,14 @@ class PlayingState(BaseState):
         self.time = 0.0
         self.score = 0
         self.coins = 0
+        self.lives = CONFIG.start_lives
         self.paused = False
         self.finished = False
         self.obstacle_spawner = ObstacleSpawner()
         self.difficulty: DifficultySnapshot = self.obstacle_spawner.curve.snapshot(0.0)
+
+    def enter(self) -> None:
+        self.game.audio.start_music()
 
     def handle_input(self, input_state: InputState) -> None:
         if input_state.quit_requested:
@@ -48,9 +52,11 @@ class PlayingState(BaseState):
         self.time += dt
         self.player.update(dt, self.level.platform_rects)
         if self.player.jumped_this_frame:
+            self.game.audio.play_jump()
             self.particles.emit_burst(self.player.rect.left, self.player.rect.bottom, 8, CYAN)
         self.camera.update(self.player.rect, dt)
         self.difficulty = self.obstacle_spawner.update(self.time, self.player.rect.centerx, self.level.spikes)
+        self.game.audio.update(dt, self.difficulty.normalized)
         self.particles.emit_trail(self.player.rect.left, self.player.rect.centery)
         self.particles.update(dt)
 
@@ -60,15 +66,16 @@ class PlayingState(BaseState):
                 coin.collected = True
                 self.coins += 1
                 self.score += 250
+                self.game.audio.play_coin()
                 self.particles.emit_burst(coin.rect.centerx, coin.rect.centery, 20, YELLOW)
 
         for spike in self.level.spikes:
             if self.player.rect.colliderect(spike.rect.inflate(-14, -10)):
-                self._die()
+                self._take_damage()
                 return
 
         if not self.player.alive:
-            self._die()
+            self._take_damage(reset_position=True)
             return
 
         progress = self.progress_percent()
@@ -76,16 +83,37 @@ class PlayingState(BaseState):
         if self.player.rect.centerx >= self.level.length:
             self._finish()
 
+    def _take_damage(self, *, reset_position: bool = False) -> None:
+        if reset_position:
+            self.player.alive = True
+            self.player.rect.y = CONFIG.ground_y - self.player.rect.height
+            self.player.velocity.y = 0
+            damaged = True
+            self.player.invulnerability_timer = CONFIG.damage_invulnerability_time
+        else:
+            damaged = self.player.take_damage()
+        if not damaged:
+            return
+
+        self.lives -= 1
+        self.camera.shake()
+        self.game.audio.play_damage()
+        self.particles.emit_burst(self.player.rect.centerx, self.player.rect.centery, 30, RED)
+
+        if self.lives <= 0:
+            self._die()
+
     def _die(self) -> None:
         from pulse_dash.states.game_over import GameOverState
 
-        self.camera.shake()
-        self.particles.emit_burst(self.player.rect.centerx, self.player.rect.centery, 30, RED)
+        self.game.audio.stop_music()
         self.game.change_state(GameOverState(self.game, False, self.score, self.coins, self.progress_percent()))
 
     def _finish(self) -> None:
         from pulse_dash.states.game_over import GameOverState
 
+        self.game.audio.play_finish()
+        self.game.audio.stop_music()
         self.game.change_state(GameOverState(self.game, True, self.score + 1000, self.coins, 100))
 
     def progress_percent(self) -> int:
@@ -134,9 +162,20 @@ class PlayingState(BaseState):
         pygame.draw.rect(surface, WHITE, (40, 28, 360, 22), width=2, border_radius=12)
         draw_text(surface, f"{progress}%", self.game.assets.font_small, WHITE, (430, 39), shadow=False)
         draw_text(surface, f"Score {self.score}", self.game.assets.font_small, WHITE, (1000, 34), shadow=False)
-        draw_text(surface, f"Coins {self.coins}/{len(self.level.coins)}", self.game.assets.font_small, YELLOW, (1160, 34), shadow=False)
+        draw_text(surface, f"Coins {self.coins}/{len(self.level.coins)}", self.game.assets.font_small, YELLOW, (1130, 34), shadow=False)
+        self._draw_lives(surface)
         intensity = int(self.difficulty.normalized * 100)
         draw_text(surface, f"Dificultad {intensity}%", self.game.assets.font_small, MUTED, (650, 34), shadow=False)
+
+    def _draw_lives(self, surface: pygame.Surface) -> None:
+        x = 520
+        y = 28
+        draw_text(surface, "Vidas", self.game.assets.font_small, WHITE, (x - 32, y + 11), shadow=False)
+        for i in range(CONFIG.start_lives):
+            rect = pygame.Rect(x + i * 24, y + 2, 18, 18)
+            color = RED if i < self.lives else DARK
+            pygame.draw.rect(surface, color, rect, border_radius=5)
+            pygame.draw.rect(surface, WHITE, rect, width=1, border_radius=5)
 
     def _draw_pause(self, surface: pygame.Surface) -> None:
         overlay = pygame.Surface((CONFIG.width, CONFIG.height), pygame.SRCALPHA)

@@ -20,7 +20,14 @@ class GameConfig:
     level_name: str = "level_01.json"
     camera_dead_zone_x: int = 360
     background_grid_size: int = 64
-    start_lives: int = 1
+    start_lives: int = 3
+    damage_invulnerability_time: float = 1.15
+    damage_bounce_velocity: float = -520.0
+    damage_knockback_speed: float = 360.0
+    music_volume: float = 0.18
+    sfx_volume: float = 0.42
+    music_bpm_start: float = 132.0
+    music_bpm_end: float = 166.0
 
     # Time-based procedural difficulty. The game starts almost as a tutorial
     # and progressively increases obstacle frequency.
