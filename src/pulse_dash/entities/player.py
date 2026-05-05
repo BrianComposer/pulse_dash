@@ -15,6 +15,9 @@ class Player:
     on_ground: bool = False
     rotation: float = 0.0
     alive: bool = True
+    jump_buffer_timer: float = 0.0
+    coyote_timer: float = 0.0
+    jumped_this_frame: bool = False
 
     @classmethod
     def create(cls, x: int = 120, y: int | None = None) -> "Player":
@@ -22,27 +25,74 @@ class Player:
         initial_y = y if y is not None else CONFIG.ground_y - size
         return cls(rect=pygame.Rect(x, initial_y, size, size), velocity=pygame.Vector2(CONFIG.player_speed, 0))
 
+    def request_jump(self, *, pressed: bool, held: bool = False) -> None:
+        """Queue a jump request so near-ground inputs are not lost.
+
+        `pressed` stores a real jump buffer. `held` keeps a short rolling buffer so
+        holding SPACE produces the expected auto-jump on landing without relying on
+        OS-level key repeat.
+        """
+        if pressed:
+            self.jump_buffer_timer = CONFIG.jump_buffer_time
+        elif held:
+            self.jump_buffer_timer = max(self.jump_buffer_timer, CONFIG.hold_jump_buffer_time)
+
     def jump(self) -> None:
+        """Backward-compatible immediate jump used by tests or external callers."""
+        self.request_jump(pressed=True, held=False)
         if self.on_ground and self.alive:
-            self.velocity.y = CONFIG.jump_velocity
-            self.on_ground = False
+            self._perform_jump()
+
+    def _perform_jump(self) -> None:
+        self.velocity.y = CONFIG.jump_velocity
+        self.on_ground = False
+        self.coyote_timer = 0.0
+        self.jump_buffer_timer = 0.0
+        self.jumped_this_frame = True
+
+    def _can_jump(self) -> bool:
+        return self.on_ground or self.coyote_timer > 0.0
 
     def update(self, dt: float, platforms: list[pygame.Rect]) -> None:
         if not self.alive:
             return
+
+        self.jumped_this_frame = False
+        dt = min(dt, 1 / 20)
+
+        if self.on_ground:
+            self.coyote_timer = CONFIG.coyote_time
+        else:
+            self.coyote_timer = max(0.0, self.coyote_timer - dt)
+
+        if self.jump_buffer_timer > 0.0 and self._can_jump():
+            self._perform_jump()
+
         self.velocity.x = CONFIG.player_speed
-        self.velocity.y += CONFIG.gravity * dt
-        self.rect.x += int(self.velocity.x * dt)
-        self.rect.y += int(self.velocity.y * dt)
+        self.velocity.y = min(self.velocity.y + CONFIG.gravity * dt, CONFIG.max_fall_speed)
+
+        previous_bottom = self.rect.bottom
+        self.rect.x += round(self.velocity.x * dt)
+        self.rect.y += round(self.velocity.y * dt)
         self.on_ground = False
 
         for platform in platforms:
             if self.rect.colliderect(platform) and self.velocity.y >= 0:
-                previous_bottom = self.rect.bottom - int(self.velocity.y * dt)
                 if previous_bottom <= platform.top + 10:
                     self.rect.bottom = platform.top
                     self.velocity.y = 0
                     self.on_ground = True
+                    self.coyote_timer = CONFIG.coyote_time
+                    break
+
+        # If SPACE was pressed just before landing, consume the buffered jump as soon
+        # as the landing is detected. The upward motion begins on the next frame, but
+        # the input never disappears.
+        if self.jump_buffer_timer > 0.0 and self.on_ground:
+            self._perform_jump()
+
+        if self.jump_buffer_timer > 0.0:
+            self.jump_buffer_timer = max(0.0, self.jump_buffer_timer - dt)
 
         if self.rect.top > CONFIG.height + 160:
             self.alive = False

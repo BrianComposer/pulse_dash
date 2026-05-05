@@ -34,10 +34,8 @@ class PlayingState(BaseState):
             return
         if input_state.pause_pressed:
             self.paused = not self.paused
-        if input_state.jump_pressed and not self.paused:
-            self.player.jump()
-            if self.player.on_ground:
-                self.particles.emit_burst(self.player.rect.left, self.player.rect.bottom, 8, CYAN)
+        if not self.paused:
+            self.player.request_jump(pressed=input_state.jump_pressed, held=input_state.jump_held)
         if input_state.restart_pressed:
             self.game.change_state(PlayingState(self.game))
 
@@ -46,6 +44,8 @@ class PlayingState(BaseState):
             return
         self.time += dt
         self.player.update(dt, self.level.platform_rects)
+        if self.player.jumped_this_frame:
+            self.particles.emit_burst(self.player.rect.left, self.player.rect.bottom, 8, CYAN)
         self.camera.update(self.player.rect, dt)
         self.particles.emit_trail(self.player.rect.left, self.player.rect.centery)
         self.particles.update(dt)
