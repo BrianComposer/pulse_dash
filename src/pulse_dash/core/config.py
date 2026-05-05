@@ -16,7 +16,9 @@ class GameConfig:
     coyote_time: float = 0.08
     max_fall_speed: float = 1450.0
     player_speed: float = 435.0
+    player_size: int = 48
     ground_y: int = 520
+    ground_height: int = 46
     level_name: str = "level_01.json"
     camera_dead_zone_x: int = 360
     background_grid_size: int = 64
@@ -42,6 +44,20 @@ class GameConfig:
     obstacle_gap_start: int = 760
     obstacle_gap_end: int = 305
     obstacle_horizontal_jitter_px: int = 42
+
+    # Endless stage system. Each cleared stage is generated procedurally and
+    # increases the obstacle curve without creating an abrupt difficulty wall.
+    stage_spawn_x: int = 120
+    stage_base_length: int = 7200
+    stage_length_growth: int = 850
+    stage_max_length: int = 14500
+    stage_transition_seconds: float = 1.35
+    stage_difficulty_step: float = 0.115
+    stage_max_difficulty_bonus: float = 0.78
+    stage_base_coins: int = 5
+    stage_max_coins: int = 12
+    stage_base_extra_platforms: int = 2
+    stage_max_extra_platforms: int = 6
 
 
 CONFIG = GameConfig()

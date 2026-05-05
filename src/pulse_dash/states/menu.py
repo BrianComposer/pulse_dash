@@ -35,6 +35,6 @@ class MenuState(BaseState):
             pygame.draw.circle(surface, (*CYAN, 80), pos, 2 + i % 5)
         draw_text(surface, "PULSE DASH", self.game.assets.font_title, WHITE, (cx, 185))
         draw_text(surface, "un arcade geométrico en Python + Pygame", self.game.assets.font_medium, CYAN, (cx, 250))
-        draw_text(surface, "ESPACIO / ENTER para empezar", self.game.assets.font_large, YELLOW, (cx, 390))
-        draw_text(surface, "Salta, evita pinchos, recoge monedas y llega al final.", self.game.assets.font_medium, MUTED, (cx, 450))
+        draw_text(surface, "ESPACIO / ENTER para empezar una run infinita", self.game.assets.font_large, YELLOW, (cx, 390))
+        draw_text(surface, "Salta, evita pinchos y sobrevive a stages infinitos.", self.game.assets.font_medium, MUTED, (cx, 450))
         draw_text(surface, "Controles: espacio o ↑ para saltar · P/Esc pausa · R reinicia", self.game.assets.font_small, MAGENTA, (cx, 610))
